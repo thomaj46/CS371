@@ -1,4 +1,4 @@
-//package assignment01;
+package CS371.assignments.assignment01;
 
 import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
