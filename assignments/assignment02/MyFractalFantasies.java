@@ -27,14 +27,15 @@ public class MyFractalFantasies extends JFrame implements GLEventListener, KeyLi
 
     Random random;
 
-    boolean goingToDragon, goingToInverse, atDragon, atInverse, inAnimation;
-    int base, pointsToDraw, transitions, currentDrawList, decrementFrames, incrementFrames, maxFrames;
+    boolean inAnimation, framesReady, initialized;
+    int base, pointsToDraw, transitions, currentDrawList, decrementFrames, incrementFrames, maxFrames, framesDrawn, currentTransitions;
     int maximumTransitions = 25;
-    double tween_factor;
     float left, right, bottom, top, xOrigin, yOrigin;
-    //String carpetIfs, chaosIfs, coralIfs, curlIfs, davisIfs, fourIfs, galaxyIfs, dragonIfs, leadyIfs, kochIfs, mouseIfs, leafIfs, plantIfs, sevenIfs, threeIfs, triIfs;
     String baseDir, ifsfile, caption, dragonCaption, inverseDragonCaption;
     double[] rotate_scale_xx, rotate_scale_xy, rotate_scale_yx, rotate_scale_yy, trans_x, trans_y, prob;
+    double[] current_xx, current_xy, current_yx, current_yy, current_tx, current_ty, current_prob;
+    double[] next_xx, next_xy, next_yx, next_yy, next_tx, next_ty, next_prob;
+    double[] tween_xx, tween_xy, tween_yx, tween_yy, tween_tx, tween_ty, tween_prob;
     ArrayList<Double> currentX, currentY, nextX, nextY, beginX, beginY;
     ArrayList<String> ifsFiles;
 
@@ -49,29 +50,12 @@ public class MyFractalFantasies extends JFrame implements GLEventListener, KeyLi
         inverseDragonCaption = "Inverse to dragon";
         caption = dragonCaption;
         baseDir = "CS371/assignments/assignment02/ifs/";
-//        carpetIfs = "carpet.ifs";
-//        chaosIfs = "chaos.ifs";
-//        coralIfs = "coral.ifs";
-//        curlIfs = "curl.ifs";
-//        davisIfs = "davis.ifs";
-//        fourIfs = "four.ifs";
-//        galaxyIfs = "galaxy.ifs";
-//        dragonIfs = "dragon.ifs";
-//        leadyIfs = "leady.ifs";
-//        kochIfs = "koch.ifs";
-//        mouseIfs = "mouse.ifs";
-//        leafIfs = "leaf.ifs";
-//        plantIfs = "plant.ifs";
-//        sevenIfs = "seven.ifs";
-//        threeIfs = "three.ifs";
-//        triIfs = "tri.ifs";
 
         ifsFiles = new ArrayList<String>();
         ifsFiles.add("carpet.ifs");
         ifsFiles.add("chaos.ifs");
         ifsFiles.add("coral.ifs");
         ifsFiles.add("curl.ifs");
-        //ifsFiles.add("davis.ifs");
         ifsFiles.add("four.ifs");
         ifsFiles.add("galaxy.ifs");
         ifsFiles.add("dragon.ifs");
@@ -79,8 +63,7 @@ public class MyFractalFantasies extends JFrame implements GLEventListener, KeyLi
         ifsFiles.add("koch.ifs");
         ifsFiles.add("mouse.ifs");
         ifsFiles.add("leaf.ifs");
-        //ifsFiles.add("plant.ifs");
-        //ifsFiles.add("seven.ifs");
+        ifsFiles.add("seven.ifs");
         ifsFiles.add("three.ifs");
         ifsFiles.add("tri.ifs");
 
@@ -100,6 +83,30 @@ public class MyFractalFantasies extends JFrame implements GLEventListener, KeyLi
         trans_y = new double[maximumTransitions];
         prob = new double[maximumTransitions];
 
+        current_xx = new double[maximumTransitions];
+        current_xy = new double[maximumTransitions];
+        current_yx = new double[maximumTransitions];
+        current_yy = new double[maximumTransitions];
+        current_tx = new double[maximumTransitions];
+        current_ty = new double[maximumTransitions];
+        current_prob = new double[maximumTransitions];
+
+        next_xx = new double[maximumTransitions];
+        next_xy = new double[maximumTransitions];
+        next_yx = new double[maximumTransitions];
+        next_yy = new double[maximumTransitions];
+        next_tx = new double[maximumTransitions];
+        next_ty = new double[maximumTransitions];
+        next_prob = new double[maximumTransitions];
+
+        tween_xx = new double[maximumTransitions];
+        tween_xy = new double[maximumTransitions];
+        tween_yx = new double[maximumTransitions];
+        tween_yy = new double[maximumTransitions];
+        tween_tx = new double[maximumTransitions];
+        tween_ty = new double[maximumTransitions];
+        tween_prob = new double[maximumTransitions];
+
         currentX = new ArrayList<Double>();
         currentY = new ArrayList<Double>();
         nextX = new ArrayList<Double>();
@@ -110,6 +117,7 @@ public class MyFractalFantasies extends JFrame implements GLEventListener, KeyLi
         caps.setDoubleBuffered(true); // request double buffer display mode
         caps.setHardwareAccelerated(true);
         canvas = new GLJPanel();
+        //canvas.setOpaque(true);
         canvas.addGLEventListener(this);
         canvas.addKeyListener(this);
         animator = new FPSAnimator(canvas, 60);
@@ -136,42 +144,91 @@ public class MyFractalFantasies extends JFrame implements GLEventListener, KeyLi
         glu = new GLU();
         glut = new GLUT();
 
-        gl.glClearColor(0.8f, 0.835f, 0.38f, 0.0f);
+
+//        gl.glClearColor(0.549f, 0.675f, 0.227f, 0.0f);
+//        gl.glColor3f(.357f, .184f, .478f);
+
+
+
+
+        gl.glClearColor(0.549f, 0.675f, 0.227f, 0.0f);
         gl.glMatrixMode(GL2.GL_PROJECTION);
         gl.glLoadIdentity();
         glu.gluOrtho2D(left, right, bottom, top);
         gl.glViewport((int)bottom, (int)left, (int)top, (int)right);
         gl.glMatrixMode(GL2.GL_MODELVIEW);
-        gl.glColor3f(.545f, .357f, .576f);
+        gl.glColor3f(.357f, .184f, .478f);
 
-        maxFrames = 50 * ifsFiles.size();
+        maxFrames = 50 * ifsFiles.size() + 1000;
         base = gl.glGenLists(maxFrames);
         currentDrawList = base;
+    }
 
+    private void myInit()
+    {
         ifsfile = baseDir + ifsFiles.get(0);
         loadifs();
         paintifs(currentX, currentY);
         beginX = currentX;
         beginY = currentY;
+        current_xx = rotate_scale_xx;
+        current_xy = rotate_scale_xy;
+        current_yx = rotate_scale_yx;
+        current_yy = rotate_scale_yy;
+        current_tx = trans_x;
+        current_ty = trans_y;
+        current_prob = prob;
+        rotate_scale_xx = new double[maximumTransitions];
+        rotate_scale_xy = new double[maximumTransitions];
+        rotate_scale_yx = new double[maximumTransitions];
+        rotate_scale_yy = new double[maximumTransitions];
+        trans_x = new double[maximumTransitions];
+        trans_y = new double[maximumTransitions];
+        prob = new double[maximumTransitions];
 
         for(int i = 1; i < ifsFiles.size(); i += 1)
         {
             ifsfile = baseDir + ifsFiles.get(i);
             loadifs();
             paintifs(nextX, nextY);
+            next_xx = rotate_scale_xx;
+            next_xy = rotate_scale_xy;
+            next_yx = rotate_scale_yx;
+            next_yy = rotate_scale_yy;
+            next_tx = trans_x;
+            next_ty = trans_y;
+            next_prob = prob;
+
+
 
             drawPointsInList(currentDrawList, currentX, currentY, nextX, nextY);
+            drawByLevel(currentDrawList + 1000);
             currentDrawList += 50;
 
             currentX = nextX;
             currentY = nextY;
+            current_xx = next_xx;
+            current_xy = next_xy;
+            current_yx = next_yx;
+            current_yy = next_yy;
+            current_tx = next_tx;
+            current_ty = next_ty;
+            current_prob = next_prob;
+
             nextX = new ArrayList<Double>();
             nextY = new ArrayList<Double>();
+            rotate_scale_xx = new double[maximumTransitions];
+            rotate_scale_xy = new double[maximumTransitions];
+            rotate_scale_yx = new double[maximumTransitions];
+            rotate_scale_yy = new double[maximumTransitions];
+            trans_x = new double[maximumTransitions];
+            trans_y = new double[maximumTransitions];
+            prob = new double[maximumTransitions];
         }
 
         drawPointsInList(currentDrawList, currentX, currentY, beginX, beginY);
-
         currentDrawList = base;
+        framesReady = true;
     }
 
     private void drawPointsInList(int startList, ArrayList<Double> startX, ArrayList<Double> startY, ArrayList<Double> endX, ArrayList<Double> endY)
@@ -189,81 +246,128 @@ public class MyFractalFantasies extends JFrame implements GLEventListener, KeyLi
                 y = (tweenFactor * endY.get(j)) + (1.0 - tweenFactor) * startY.get(j);
                 gl.glVertex2d(x, y);
             }
-            gl.glEnd();
 
+            gl.glEnd();
+            framesDrawn =+ 1;
             gl.glEndList();
         }
+    }
+
+    private void drawByLevel(int startList)
+    {
+        double tweenFactor;
+        for (int i = 0; i <= 50; i += 1)
+        {
+            gl.glNewList(startList + i, GL2.GL_COMPILE);
+            tweenFactor = i / 50.0;
+            for (int j = 0; j < tween_xx.length; j += 1)
+            {
+                tween_xx[j] = (tweenFactor * next_xx[j]) + (1.0 - tweenFactor) * current_xx[j];
+                tween_xy[j] = (tweenFactor * next_xy[j]) + (1.0 - tweenFactor) * current_xy[j];
+                tween_yx[j] = (tweenFactor * next_yx[j]) + (1.0 - tweenFactor) * current_yx[j];
+                tween_yy[j] = (tweenFactor * next_yy[j]) + (1.0 - tweenFactor) * current_yy[j];
+                tween_tx[j] = (tweenFactor * next_tx[j]) + (1.0 - tweenFactor) * current_tx[j];
+                tween_ty[j] = (tweenFactor * next_ty[j]) + (1.0 - tweenFactor) * current_ty[j];
+            }
+
+
+            recursiveDraw(4, .5, .5, -.5, .5, -.5, -.5, .5, -.5);
+            gl.glEndList();
+        }
+
+    }
+
+    private void recursiveDraw(int level, double x1, double y1, double x2, double y2, double x3, double y3, double x4, double y4)
+    {
+        if (level < 1)
+        {
+            return;
+        }
+
+        gl.glBegin(GL2.GL_POLYGON);
+        gl.glVertex2d(x1, y1);
+        gl.glVertex2d(x2, y2);
+        gl.glVertex2d(x3, y3);
+        gl.glVertex2d(x4, y4);
+        gl.glEnd();
+
+        for (int i = 0; i < transitions; i += 1)
+        {
+            x1 = tween_xx[i] * x1 + tween_xy[i] * y1 + tween_tx[i];
+            y1 = tween_yx[i] * x1 + tween_yy[i] * y1 + tween_ty[i];
+            x2 = tween_xx[i] * x2 + tween_xy[i] * y2 + tween_tx[i];
+            y2 = tween_yx[i] * x2 + tween_yy[i] * y2 + tween_ty[i];
+            x3 = tween_xx[i] * x3 + tween_xy[i] * y3 + tween_tx[i];
+            y3 = tween_yx[i] * x3 + tween_yy[i] * y3 + tween_ty[i];
+            x4 = tween_xx[i] * x4 + tween_xy[i] * y4 + tween_tx[i];
+            y4 = tween_yx[i] * x4 + tween_yy[i] * y4 + tween_ty[i];
+
+            recursiveDraw(level - 1, x1, y1, x2, y2, x3, y3, x4, y4);
+        }
+
     }
 
     @Override
     public void display(GLAutoDrawable glAutoDrawable)
     {
+        if (!framesReady)
+        {
+            if (!initialized)
+            {
+                initialized = true;
+                GL2 gl = glAutoDrawable.getGL().getGL2();
+                gl.glClear(GL.GL_COLOR_BUFFER_BIT);
+
+                // Fonts draw selves at the current raster position
+                gl.glRasterPos2f(right - (right + 2.0f), bottom + 1);
+                caption = "Please wait... drawing frames";
+                glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, caption);
+
+                gl.glFlush();
+            }
+            else
+            {
+                myInit();
+            }
+        }
+        else
+        {
+            myDisplay(glAutoDrawable);
+        }
+    }
+
+    private void myDisplay(GLAutoDrawable glAutoDrawable)
+    {
         GL2 gl = glAutoDrawable.getGL().getGL2();
-        gl.glClear (GL.GL_COLOR_BUFFER_BIT);
+        gl.glClear(GL.GL_COLOR_BUFFER_BIT);
         gl.glCallList(currentDrawList);
 
         // Fonts draw selves at the current raster position
         gl.glRasterPos2f(right - (right + 1.5f), bottom + 1);
-        caption = "Current drawlist = " + currentDrawList;
+        caption = "Current frame = " + currentDrawList;
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, caption);
 
         gl.glFlush();
 
-        if (inAnimation)
-        {
-            if (incrementFrames > 0)
-            {
+        if (inAnimation) {
+            if (incrementFrames > 0) {
                 currentDrawList += 1;
                 incrementFrames -= 1;
-                if (currentDrawList > maxFrames)
-                {
+                if (currentDrawList > maxFrames) {
                     currentDrawList = base;
                 }
-            }
-            else if (decrementFrames > 0)
-            {
+            } else if (decrementFrames > 0) {
                 currentDrawList -= 1;
                 decrementFrames -= 1;
-                if (currentDrawList < base)
-                {
+                if (currentDrawList < base) {
                     currentDrawList = maxFrames;
                 }
             }
 
-            if (incrementFrames < 1 && decrementFrames < 1)
-            {
+            if (incrementFrames < 1 && decrementFrames < 1) {
                 inAnimation = false;
             }
         }
-
-
-
-
-
-
-//        if(goingToDragon)
-//        {
-//            caption = dragonCaption;
-//            currentDrawList += 1;
-//            if (currentDrawList >= 50)
-//            {
-//                goingToDragon = false;
-//                atDragon = true;
-//                atInverse = false;
-//            }
-//        }
-//
-//        if (goingToInverse)
-//        {
-//            caption = inverseDragonCaption;
-//            currentDrawList -= 1;
-//            if (currentDrawList <= base)
-//            {
-//                goingToInverse = false;
-//                atInverse = true;
-//                atDragon = false;
-//            }
-//        }
     }
 
     @Override
@@ -407,38 +511,12 @@ public class MyFractalFantasies extends JFrame implements GLEventListener, KeyLi
             //   sure the first point seen is attracted into the
             //   fractal
             if (iter > 50) {
-                //setColor(gl);
-                //gl.glBegin(GL.GL_POINTS);
                 xCoordinates.add(newx);
                 yCoordinates.add(newy);
-                //gl.glVertex2d(newx,newy);
-                //gl.glEnd();
             }
             oldx = newx;
             oldy = newy;
             iter++;
         }
     }
-
-    public void setColor(GL2 gl)
-    {
-        double rand = random.nextDouble();
-
-        if (rand < .75)
-        {
-            // Blue 336699
-            gl.glColor3f(.2f, .4f, .6f);
-        }
-        else if (rand < .9)
-        {
-            // 19538A
-            gl.glColor3f(.31f, .49f, .67f);
-        }
-        else
-        {
-            // 7BA3CA
-            gl.glColor3f(.48f, .64f, .8f);
-        }
-    }
-
 }
