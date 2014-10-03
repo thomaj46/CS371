@@ -15,7 +15,7 @@ import java.util.ArrayList;
 /**
  * Created by John on 10/1/2014.
  */
-public class DrawByLevelFractal extends JFrame implements GLEventListener, KeyListener
+public class DrawByLevelProgress extends JFrame implements GLEventListener, KeyListener
 {
 
     FPSAnimator animator;
@@ -29,6 +29,7 @@ public class DrawByLevelFractal extends JFrame implements GLEventListener, KeyLi
     String baseDir, caption, ifsfile;
     int maximumTransitions = 25;
     int base, pointsToDraw, transitions, currentDrawList, decrementFrames, incrementFrames, maxFrames, framesDrawn, currentTransitions;
+    int minLevel, maxLevel;
     float left, right, bottom, top, xOrigin, yOrigin;
     double[] rotate_scale_xx, rotate_scale_xy, rotate_scale_yx, rotate_scale_yy, trans_x, trans_y, prob;
     boolean drawn;
@@ -59,7 +60,29 @@ public class DrawByLevelFractal extends JFrame implements GLEventListener, KeyLi
     	}
     }
 
-    public DrawByLevelFractal()
+    private class Point
+    {
+        public double x;
+        public double y;
+
+        public Point(double x, double y)
+        {
+            this.x = x;
+            this.y = y;
+        }
+    }
+
+    private class Polygon
+    {
+        public ArrayList<Point> Verticies;
+
+        public Polygon()
+        {
+            this.Verticies = new ArrayList<Point>();
+        }
+    }
+
+    public DrawByLevelProgress()
     {
         baseDir = "CS371/assignments/assignment02/ifs/";
 
@@ -86,6 +109,8 @@ public class DrawByLevelFractal extends JFrame implements GLEventListener, KeyLi
         top = 11;
         xOrigin = 0;
         yOrigin = 0;
+        minLevel = 3;
+        maxLevel = 10;
 
         rotate_scale_xx = new double[maximumTransitions];
         rotate_scale_xy = new double[maximumTransitions];
@@ -111,7 +136,7 @@ public class DrawByLevelFractal extends JFrame implements GLEventListener, KeyLi
 
     public static void main(String[] args)
     {
-        new DrawByLevelFractal().run();
+        new DrawByLevelProgress().run();
     }
 
     private void run()
@@ -143,9 +168,13 @@ public class DrawByLevelFractal extends JFrame implements GLEventListener, KeyLi
         base = gl.glGenLists(maxFrames);
         currentDrawList = base;
 
-        ifsfile = "tri.ifs";
+        ifsfile = baseDir + "seven.ifs";
         fractals.add(loadifs());
         currentFractal = fractals.get(0);
+
+        gl.glNewList(base, GL2.GL_COMPILE);
+        drawByLevel();
+        gl.glEndList();
     }
 
     @Override
@@ -159,41 +188,51 @@ public class DrawByLevelFractal extends JFrame implements GLEventListener, KeyLi
         caption = "Please wait... drawing frames";
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, caption);
 
-        drawByLevel();
+        gl.glCallList(base);
 
         gl.glFlush();
     }
 
     private void drawByLevel()
     {
-        recursiveDraw(10, -2, 0, 2, 0, 0, 2);
+        Polygon polygon = new Polygon();
+        polygon.Verticies.add(new Point(2, .5));
+        polygon.Verticies.add(new Point(-2, .5));
+        polygon.Verticies.add(new Point(-2, -.5));
+        polygon.Verticies.add(new Point(2, -.5));
+
+        recursiveDraw(0, polygon.Verticies);
     }
 
-    private void recursiveDraw(int level, double x1, double y1, double x2, double y2, double x3, double y3)
+    private void recursiveDraw(int level, ArrayList<Point> verticies)
     {
-        if (level < 1)
+        if (level >= maxLevel)
         {
             return;
         }
 
-        gl.glBegin(GL2.GL_LINE_LOOP);
-        gl.glVertex2d(x1, y1);
-        gl.glVertex2d(x2, y2);
-        gl.glVertex2d(x3, y3);
-        gl.glEnd();
+        if (level > minLevel)
+        {
+            gl.glBegin(GL2.GL_POLYGON);
+            for (Point vertex : verticies)
+            {
+                gl.glVertex2d(vertex.x, vertex.y);
+            }
+            gl.glEnd();
+        }
 
-        double newx1, newy1, newx2, newy2, newx3, newy3;
+        double newX, newY;
         for (Transformation transformation : currentFractal.Transformations)
         {
-        	newx1 = transformation.xx * x1 + transformation.xy * y1 + transformation.tx;
-        	newx2 = transformation.xx * x2 + transformation.xy * y2 + transformation.tx;
-        	newx3 = transformation.xx * x3 + transformation.xy * y3 + transformation.tx;
+            ArrayList<Point> newPoints = new ArrayList<Point>();
+            for (Point vertex : verticies)
+            {
+                newX = transformation.xx * vertex.x + transformation.xy * vertex.y + transformation.tx;
+                newY = transformation.yx * vertex.x + transformation.yy * vertex.y + transformation.ty;
+                newPoints.add(new Point(newX, newY));
+            }
 
-        	newy1 = transformation.yx * y1 + transformation.yy * y1 + transformation.ty;
-        	newy2 = transformation.yx * y2 + transformation.yy * y2 + transformation.ty;
-        	newy3 = transformation.yx * y3 + transformation.yy * y3 + transformation.ty;
-        	
-        	recursiveDraw(level - 1, newx1, newy1, newx2, newy2, newx3, newy3);
+        	recursiveDraw(level + 1, newPoints);
         }
     }
 

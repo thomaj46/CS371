@@ -28,7 +28,7 @@ public class MyFractalFantasies extends JFrame implements GLEventListener, KeyLi
     Random random;
 
     boolean inAnimation, framesReady, initialized;
-    int base, pointsToDraw, transitions, currentDrawList, decrementFrames, incrementFrames, maxFrames, framesDrawn, currentTransitions;
+    int base, pointsToDraw, transitions, currentDrawList, decrementFrames, incrementFrames, maxFrames, framesDrawn, currentTransitions, minStartLevel;
     int maximumTransitions = 25;
     float left, right, bottom, top, xOrigin, yOrigin;
     String baseDir, ifsfile, caption, dragonCaption, inverseDragonCaption;
@@ -74,6 +74,7 @@ public class MyFractalFantasies extends JFrame implements GLEventListener, KeyLi
         top = 11;
         xOrigin = 0;
         yOrigin = 0;
+        minStartLevel = 3;
 
         rotate_scale_xx = new double[maximumTransitions];
         rotate_scale_xy = new double[maximumTransitions];
@@ -202,7 +203,7 @@ public class MyFractalFantasies extends JFrame implements GLEventListener, KeyLi
 
 
             drawPointsInList(currentDrawList, currentX, currentY, nextX, nextY);
-            drawByLevel(currentDrawList + 1000);
+            drawByLevel(currentDrawList + 1001);
             currentDrawList += 50;
 
             currentX = nextX;
@@ -227,6 +228,9 @@ public class MyFractalFantasies extends JFrame implements GLEventListener, KeyLi
         }
 
         drawPointsInList(currentDrawList, currentX, currentY, beginX, beginY);
+        ifsfile = baseDir + ifsFiles.get(0);
+        loadifs();
+        drawByLevel(currentDrawList + 1001);
         currentDrawList = base;
         framesReady = true;
     }
@@ -284,25 +288,28 @@ public class MyFractalFantasies extends JFrame implements GLEventListener, KeyLi
             return;
         }
 
-        gl.glBegin(GL2.GL_POLYGON);
-        gl.glVertex2d(x1, y1);
-        gl.glVertex2d(x2, y2);
-        gl.glVertex2d(x3, y3);
-        gl.glVertex2d(x4, y4);
-        gl.glEnd();
+        if (level < 3)
+        {
+            gl.glBegin(GL2.GL_POLYGON);
+            gl.glVertex2d(x1, y1);
+            gl.glVertex2d(x2, y2);
+            gl.glVertex2d(x3, y3);
+            gl.glVertex2d(x4, y4);
+            gl.glEnd();
+        }
 
         for (int i = 0; i < transitions; i += 1)
         {
-            x1 = tween_xx[i] * x1 + tween_xy[i] * y1 + tween_tx[i];
-            y1 = tween_yx[i] * x1 + tween_yy[i] * y1 + tween_ty[i];
-            x2 = tween_xx[i] * x2 + tween_xy[i] * y2 + tween_tx[i];
-            y2 = tween_yx[i] * x2 + tween_yy[i] * y2 + tween_ty[i];
-            x3 = tween_xx[i] * x3 + tween_xy[i] * y3 + tween_tx[i];
-            y3 = tween_yx[i] * x3 + tween_yy[i] * y3 + tween_ty[i];
-            x4 = tween_xx[i] * x4 + tween_xy[i] * y4 + tween_tx[i];
-            y4 = tween_yx[i] * x4 + tween_yy[i] * y4 + tween_ty[i];
+            double nx1 = tween_xx[i] * x1 + tween_xy[i] * y1 + tween_tx[i];
+            double ny1 = tween_yx[i] * x1 + tween_yy[i] * y1 + tween_ty[i];
+            double nx2 = tween_xx[i] * x2 + tween_xy[i] * y2 + tween_tx[i];
+            double ny2 = tween_yx[i] * x2 + tween_yy[i] * y2 + tween_ty[i];
+            double nx3 = tween_xx[i] * x3 + tween_xy[i] * y3 + tween_tx[i];
+            double ny3 = tween_yx[i] * x3 + tween_yy[i] * y3 + tween_ty[i];
+            double nx4 = tween_xx[i] * x4 + tween_xy[i] * y4 + tween_tx[i];
+            double ny4 = tween_yx[i] * x4 + tween_yy[i] * y4 + tween_ty[i];
 
-            recursiveDraw(level - 1, x1, y1, x2, y2, x3, y3, x4, y4);
+            recursiveDraw(level - 1, nx1, ny1, nx2, ny2, nx3, ny3, nx4, ny4);
         }
 
     }
