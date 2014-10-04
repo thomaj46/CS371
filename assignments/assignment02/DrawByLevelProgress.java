@@ -22,16 +22,15 @@ public class DrawByLevelProgress extends JFrame implements GLEventListener, KeyL
     GL2 gl;
     GLU glu;
     GLUT glut;
-
     GLJPanel canvas;
     GLCapabilities caps;
+
     ArrayList<String> ifsFiles;
     String baseDir, caption, ifsfile;
     int maximumTransitions = 25;
     int base, pointsToDraw, transitions, currentDrawList, decrementFrames, incrementFrames, maxFrames, framesDrawn, currentTransitions;
     int minLevel, maxLevel;
     float left, right, bottom, top, xOrigin, yOrigin;
-    double[] rotate_scale_xx, rotate_scale_xy, rotate_scale_yx, rotate_scale_yy, trans_x, trans_y, prob;
     boolean drawn;
     ArrayList<Fractal> fractals;
     Fractal currentFractal;
@@ -112,23 +111,13 @@ public class DrawByLevelProgress extends JFrame implements GLEventListener, KeyL
         minLevel = 3;
         maxLevel = 10;
 
-        rotate_scale_xx = new double[maximumTransitions];
-        rotate_scale_xy = new double[maximumTransitions];
-        rotate_scale_yx = new double[maximumTransitions];
-        rotate_scale_yy = new double[maximumTransitions];
-        trans_x = new double[maximumTransitions];
-        trans_y = new double[maximumTransitions];
-        prob = new double[maximumTransitions];
-
         caps = new GLCapabilities(GLProfile.getGL2GL3());
         caps.setDoubleBuffered(true); // request double buffer display mode
         caps.setHardwareAccelerated(true);
         canvas = new GLJPanel();
-        //canvas.setOpaque(true);
         canvas.addGLEventListener(this);
         canvas.addKeyListener(this);
         animator = new FPSAnimator(canvas, 60);
-
         getContentPane().add(canvas);
         
         fractals = new ArrayList<Fractal>();
@@ -172,8 +161,10 @@ public class DrawByLevelProgress extends JFrame implements GLEventListener, KeyL
         fractals.add(loadifs());
         currentFractal = fractals.get(0);
 
+        ArrayList<Point> startPoints = paintFractal(currentFractal);
         gl.glNewList(base, GL2.GL_COMPILE);
-        drawByLevel();
+        //drawByLevel();
+        drawPoints(startPoints);
         gl.glEndList();
     }
 
@@ -191,6 +182,20 @@ public class DrawByLevelProgress extends JFrame implements GLEventListener, KeyL
         gl.glCallList(base);
 
         gl.glFlush();
+    }
+
+    private void drawPoints(ArrayList<Point> points)
+    {
+        gl.glBegin(GL2.GL_POINTS);
+        for(Point point : points)
+        {
+            gl.glVertex2d(point.x, point.y);
+        }
+
+        gl.glEnd();
+
+//            x = (tweenFactor * endX.get(j)) + (1.0 - tweenFactor) * startX.get(j);
+//            y = (tweenFactor * endY.get(j)) + (1.0 - tweenFactor) * startY.get(j);
     }
 
     private void drawByLevel()
@@ -266,10 +271,55 @@ public class DrawByLevelProgress extends JFrame implements GLEventListener, KeyL
 
     }
 
-    /* The following routine loads Iterated Function System codes.  Note
-* that loadifs() only reads the very first set of IFS codes in the
-* file and ignores the name label in the file entirely.
-*/
+    private ArrayList<Point> paintFractal(Fractal fractal)
+    {
+        int iteration, t;
+        double oldx, oldy, newx, newy, p;
+        ArrayList<Point> points = new ArrayList<Point>();
+        double cumulative_prob [] = new double [fractal.Transformations.size()];
+        cumulative_prob[0] = fractal.Transformations.get(0).prob;
+        for (int i = 1; i < fractal.Transformations.size(); i++)
+        {
+            cumulative_prob[i] = cumulative_prob[i-1] + fractal.Transformations.get(i).prob; // Make probability cumulative
+        }
+
+
+        iteration = 0;
+        oldx = xOrigin;
+        oldy = yOrigin;
+        Transformation transformation;
+        while (iteration <= pointsToDraw + 50)
+        {
+            p = Math.random();
+
+            // Select transformation t
+            t = 0;
+            while ((p > cumulative_prob[t]) && (t < fractal.Transformations.size() - 1))
+            {
+                ++t;
+            }
+
+            // Transform point by transformation t
+            transformation = fractal.Transformations.get(t);
+            newx = transformation.xx * oldx + transformation.xy * oldy + transformation.tx;
+            newy = transformation.yx * oldx + transformation.yy * oldy + transformation.ty;
+
+            // Jump around for awhile without plotting to make
+            //   sure the first point seen is attracted into the
+            //   fractal
+            if (iteration > 50)
+            {
+                points.add(new Point(newx, newy));
+            }
+
+            oldx = newx;
+            oldy = newy;
+            iteration++;
+        }
+
+        return points;
+    }
+
     Fractal loadifs()
     {
         BufferedReader in = null;

@@ -117,7 +117,7 @@ public class DrawByLevelFractal extends JFrame implements GLEventListener, KeyLi
         base = gl.glGenLists(maxFrames);
         currentDrawList = base;
 
-        ifsfile = "CS371/assignments/assignment02/ifs/tri.ifs";
+        ifsfile = "CS371/assignments/assignment02/tri.ifs";
         loadifs();
     }
 

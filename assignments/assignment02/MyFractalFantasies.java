@@ -9,63 +9,114 @@ import javax.media.opengl.glu.GLU;
 import javax.swing.*;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
-import java.util.Random;
 
 /**
- * Created by John on 9/27/2014.
+ * Created by John on 10/3/2014.
  */
 public class MyFractalFantasies extends JFrame implements GLEventListener, KeyListener
 {
-    GLJPanel canvas;
+
+    FPSAnimator animator;
     GL2 gl;
     GLU glu;
     GLUT glut;
+    GLJPanel canvas;
     GLCapabilities caps;
-    FPSAnimator animator;
 
-    Random random;
-
-    boolean inAnimation, framesReady, initialized;
-    int base, pointsToDraw, transitions, currentDrawList, decrementFrames, incrementFrames, maxFrames, framesDrawn, currentTransitions, minStartLevel;
-    int maximumTransitions = 25;
+    String baseDir, caption;
+    int base, pointsToDraw, transitions, currentDrawList, decrementFrames, incrementFrames, maxFrames, framesDrawn;
+    int minLevel, maxLevel, currentFractalIndex;
     float left, right, bottom, top, xOrigin, yOrigin;
-    String baseDir, ifsfile, caption, dragonCaption, inverseDragonCaption;
-    double[] rotate_scale_xx, rotate_scale_xy, rotate_scale_yx, rotate_scale_yy, trans_x, trans_y, prob;
-    double[] current_xx, current_xy, current_yx, current_yy, current_tx, current_ty, current_prob;
-    double[] next_xx, next_xy, next_yx, next_yy, next_tx, next_ty, next_prob;
-    double[] tween_xx, tween_xy, tween_yx, tween_yy, tween_tx, tween_ty, tween_prob;
-    ArrayList<Double> currentX, currentY, nextX, nextY, beginX, beginY;
-    ArrayList<String> ifsFiles;
+    boolean framesReady, initialized, inAnimation, drawByLevel;
+    ArrayList<Fractal> fractals;
+    Fractal currentFractal;
 
-    public static void main(String[] args)
+
+    private class Transformation
     {
-        new MyFractalFantasies().run();
+        public double xx;
+        public double xy;
+        public double yx;
+        public double yy;
+        public double tx;
+        public double ty;
+        public double prob;
+
+        public double transformX(double x, double y)
+        {
+            return this.xx * x + this.xy * y + this.tx;
+        }
+
+        public double transformY(double x, double y)
+        {
+            return this.yx * x + this.yy * y + this.ty;
+        }
+    }
+
+    private class Fractal
+    {
+        public String Name;
+        public ArrayList<Transformation> Transformations;
+        public int RecursiveLevels = 4;
+        public Polygon OptimalPolygon;
+
+        public Fractal(String name, int recursiveLevels, Polygon optimalPolygon)
+        {
+            this.Name = name;
+            this.RecursiveLevels = recursiveLevels;
+            this.OptimalPolygon = optimalPolygon;
+            this.Transformations = new ArrayList<Transformation>();
+        }
+    }
+
+    private class Point
+    {
+        public double x;
+        public double y;
+
+        public Point(double x, double y)
+        {
+            this.x = x;
+            this.y = y;
+        }
+    }
+
+    private class Polygon
+    {
+        public ArrayList<Point> Verticies;
+
+        public Polygon()
+        {
+            this.Verticies = new ArrayList<Point>();
+        }
     }
 
     public MyFractalFantasies()
     {
-        dragonCaption = "Dragon to inverse";
-        inverseDragonCaption = "Inverse to dragon";
-        caption = dragonCaption;
-        baseDir = "CS371/assignments/assignment02/ifs/";
+        baseDir = "CS371/assignments/assignment02/";
 
-        ifsFiles = new ArrayList<String>();
-        ifsFiles.add("carpet.ifs");
-        ifsFiles.add("chaos.ifs");
-        ifsFiles.add("coral.ifs");
-        ifsFiles.add("curl.ifs");
-        ifsFiles.add("four.ifs");
-        ifsFiles.add("galaxy.ifs");
-        ifsFiles.add("dragon.ifs");
-        ifsFiles.add("leady.ifs");
-        ifsFiles.add("koch.ifs");
-        ifsFiles.add("mouse.ifs");
-        ifsFiles.add("leaf.ifs");
-        ifsFiles.add("seven.ifs");
-        ifsFiles.add("three.ifs");
-        ifsFiles.add("tri.ifs");
+        Polygon rectangle = this.getRectangle();
+        Polygon rightTriangle = this.getRightTriangle();
+
+        fractals = new ArrayList<Fractal>();
+        fractals.add(new Fractal("carpet.ifs", 4, rectangle));
+        fractals.add(new Fractal("chaos.ifs", 4, rectangle));
+        fractals.add(new Fractal("coral.ifs", 4, rectangle));
+        fractals.add(new Fractal("curl.ifs", 4, rectangle));
+        fractals.add(new Fractal("four.ifs", 4, rectangle));
+        fractals.add(new Fractal("galaxy.ifs", 4, rectangle));
+        fractals.add(new Fractal("dragon.ifs", 7, rectangle));
+        fractals.add(new Fractal("leady.ifs", 5, rectangle));
+        fractals.add(new Fractal("koch.ifs", 4, rectangle));
+        fractals.add(new Fractal("mouse.ifs", 4, rectangle));
+        fractals.add(new Fractal("leaf.ifs", 4, rectangle));
+        fractals.add(new Fractal("seven.ifs", 4, rectangle));
+        fractals.add(new Fractal("three.ifs", 6, rectangle));
+        fractals.add(new Fractal("tri.ifs", 6, rectangle));
 
         pointsToDraw = 80000;
         left = -7;
@@ -74,59 +125,47 @@ public class MyFractalFantasies extends JFrame implements GLEventListener, KeyLi
         top = 11;
         xOrigin = 0;
         yOrigin = 0;
-        minStartLevel = 3;
+        minLevel = 3;
+        maxLevel = 10;
 
-        rotate_scale_xx = new double[maximumTransitions];
-        rotate_scale_xy = new double[maximumTransitions];
-        rotate_scale_yx = new double[maximumTransitions];
-        rotate_scale_yy = new double[maximumTransitions];
-        trans_x = new double[maximumTransitions];
-        trans_y = new double[maximumTransitions];
-        prob = new double[maximumTransitions];
-
-        current_xx = new double[maximumTransitions];
-        current_xy = new double[maximumTransitions];
-        current_yx = new double[maximumTransitions];
-        current_yy = new double[maximumTransitions];
-        current_tx = new double[maximumTransitions];
-        current_ty = new double[maximumTransitions];
-        current_prob = new double[maximumTransitions];
-
-        next_xx = new double[maximumTransitions];
-        next_xy = new double[maximumTransitions];
-        next_yx = new double[maximumTransitions];
-        next_yy = new double[maximumTransitions];
-        next_tx = new double[maximumTransitions];
-        next_ty = new double[maximumTransitions];
-        next_prob = new double[maximumTransitions];
-
-        tween_xx = new double[maximumTransitions];
-        tween_xy = new double[maximumTransitions];
-        tween_yx = new double[maximumTransitions];
-        tween_yy = new double[maximumTransitions];
-        tween_tx = new double[maximumTransitions];
-        tween_ty = new double[maximumTransitions];
-        tween_prob = new double[maximumTransitions];
-
-        currentX = new ArrayList<Double>();
-        currentY = new ArrayList<Double>();
-        nextX = new ArrayList<Double>();
-        nextY = new ArrayList<Double>();
-
-        random = new Random(321);
         caps = new GLCapabilities(GLProfile.getGL2GL3());
         caps.setDoubleBuffered(true); // request double buffer display mode
         caps.setHardwareAccelerated(true);
         canvas = new GLJPanel();
-        //canvas.setOpaque(true);
         canvas.addGLEventListener(this);
         canvas.addKeyListener(this);
         animator = new FPSAnimator(canvas, 60);
-
         getContentPane().add(canvas);
+
     }
 
-    public void run()
+    private Polygon getRectangle()
+    {
+        Polygon polygon = new Polygon();
+        polygon.Verticies.add(new Point(2, .5));
+        polygon.Verticies.add(new Point(-2, .5));
+        polygon.Verticies.add(new Point(-2, -.5));
+        polygon.Verticies.add(new Point(2, -.5));
+
+        return polygon;
+    }
+
+    private Polygon getRightTriangle()
+    {
+        Polygon polygon = new Polygon();
+        polygon.Verticies.add(new Point(0, 0));
+        polygon.Verticies.add(new Point(0, 2));
+        polygon.Verticies.add(new Point(.5, 0));
+
+        return polygon;
+    }
+
+    public static void main(String[] args)
+    {
+        new MyFractalFantasies().run();
+    }
+
+    private void run()
     {
         setSize(800,800);
         setLocationRelativeTo(null);
@@ -135,22 +174,13 @@ public class MyFractalFantasies extends JFrame implements GLEventListener, KeyLi
         animator.start();
     }
 
-    /**
-     * Start of GLEventListener methods
-     */
+
     @Override
     public void init(GLAutoDrawable glAutoDrawable)
     {
         gl = glAutoDrawable.getGL().getGL2();
         glu = new GLU();
         glut = new GLUT();
-
-
-//        gl.glClearColor(0.549f, 0.675f, 0.227f, 0.0f);
-//        gl.glColor3f(.357f, .184f, .478f);
-
-
-
 
         gl.glClearColor(0.549f, 0.675f, 0.227f, 0.0f);
         gl.glMatrixMode(GL2.GL_PROJECTION);
@@ -160,158 +190,17 @@ public class MyFractalFantasies extends JFrame implements GLEventListener, KeyLi
         gl.glMatrixMode(GL2.GL_MODELVIEW);
         gl.glColor3f(.357f, .184f, .478f);
 
-        maxFrames = 50 * ifsFiles.size() + 1000;
-        base = gl.glGenLists(maxFrames);
+        maxFrames = 50 * fractals.size() + 1000;
+        base = gl.glGenLists(maxFrames + 50);
         currentDrawList = base;
-    }
 
-    private void myInit()
-    {
-        ifsfile = baseDir + ifsFiles.get(0);
-        loadifs();
-        paintifs(currentX, currentY);
-        beginX = currentX;
-        beginY = currentY;
-        current_xx = rotate_scale_xx;
-        current_xy = rotate_scale_xy;
-        current_yx = rotate_scale_yx;
-        current_yy = rotate_scale_yy;
-        current_tx = trans_x;
-        current_ty = trans_y;
-        current_prob = prob;
-        rotate_scale_xx = new double[maximumTransitions];
-        rotate_scale_xy = new double[maximumTransitions];
-        rotate_scale_yx = new double[maximumTransitions];
-        rotate_scale_yy = new double[maximumTransitions];
-        trans_x = new double[maximumTransitions];
-        trans_y = new double[maximumTransitions];
-        prob = new double[maximumTransitions];
-
-        for(int i = 1; i < ifsFiles.size(); i += 1)
+        for(Fractal fractal : fractals)
         {
-            ifsfile = baseDir + ifsFiles.get(i);
-            loadifs();
-            paintifs(nextX, nextY);
-            next_xx = rotate_scale_xx;
-            next_xy = rotate_scale_xy;
-            next_yx = rotate_scale_yx;
-            next_yy = rotate_scale_yy;
-            next_tx = trans_x;
-            next_ty = trans_y;
-            next_prob = prob;
-
-
-
-            drawPointsInList(currentDrawList, currentX, currentY, nextX, nextY);
-            drawByLevel(currentDrawList + 1001);
-            currentDrawList += 50;
-
-            currentX = nextX;
-            currentY = nextY;
-            current_xx = next_xx;
-            current_xy = next_xy;
-            current_yx = next_yx;
-            current_yy = next_yy;
-            current_tx = next_tx;
-            current_ty = next_ty;
-            current_prob = next_prob;
-
-            nextX = new ArrayList<Double>();
-            nextY = new ArrayList<Double>();
-            rotate_scale_xx = new double[maximumTransitions];
-            rotate_scale_xy = new double[maximumTransitions];
-            rotate_scale_yx = new double[maximumTransitions];
-            rotate_scale_yy = new double[maximumTransitions];
-            trans_x = new double[maximumTransitions];
-            trans_y = new double[maximumTransitions];
-            prob = new double[maximumTransitions];
+            loadFractal(fractal);
         }
 
-        drawPointsInList(currentDrawList, currentX, currentY, beginX, beginY);
-        ifsfile = baseDir + ifsFiles.get(0);
-        loadifs();
-        drawByLevel(currentDrawList + 1001);
-        currentDrawList = base;
-        framesReady = true;
-    }
-
-    private void drawPointsInList(int startList, ArrayList<Double> startX, ArrayList<Double> startY, ArrayList<Double> endX, ArrayList<Double> endY)
-    {
-        double x, y, tweenFactor;
-        for (int i = 0; i <= 50; i += 1)
-        {
-            gl.glNewList(startList + i, GL2.GL_COMPILE);
-            tweenFactor = i / 50.0;
-
-            gl.glBegin(GL2.GL_POINTS);
-            for(int j = 0; j < pointsToDraw; j += 1)
-            {
-                x = (tweenFactor * endX.get(j)) + (1.0 - tweenFactor) * startX.get(j);
-                y = (tweenFactor * endY.get(j)) + (1.0 - tweenFactor) * startY.get(j);
-                gl.glVertex2d(x, y);
-            }
-
-            gl.glEnd();
-            framesDrawn =+ 1;
-            gl.glEndList();
-        }
-    }
-
-    private void drawByLevel(int startList)
-    {
-        double tweenFactor;
-        for (int i = 0; i <= 50; i += 1)
-        {
-            gl.glNewList(startList + i, GL2.GL_COMPILE);
-            tweenFactor = i / 50.0;
-            for (int j = 0; j < tween_xx.length; j += 1)
-            {
-                tween_xx[j] = (tweenFactor * next_xx[j]) + (1.0 - tweenFactor) * current_xx[j];
-                tween_xy[j] = (tweenFactor * next_xy[j]) + (1.0 - tweenFactor) * current_xy[j];
-                tween_yx[j] = (tweenFactor * next_yx[j]) + (1.0 - tweenFactor) * current_yx[j];
-                tween_yy[j] = (tweenFactor * next_yy[j]) + (1.0 - tweenFactor) * current_yy[j];
-                tween_tx[j] = (tweenFactor * next_tx[j]) + (1.0 - tweenFactor) * current_tx[j];
-                tween_ty[j] = (tweenFactor * next_ty[j]) + (1.0 - tweenFactor) * current_ty[j];
-            }
-
-
-            recursiveDraw(4, .5, .5, -.5, .5, -.5, -.5, .5, -.5);
-            gl.glEndList();
-        }
-
-    }
-
-    private void recursiveDraw(int level, double x1, double y1, double x2, double y2, double x3, double y3, double x4, double y4)
-    {
-        if (level < 1)
-        {
-            return;
-        }
-
-        if (level < 3)
-        {
-            gl.glBegin(GL2.GL_POLYGON);
-            gl.glVertex2d(x1, y1);
-            gl.glVertex2d(x2, y2);
-            gl.glVertex2d(x3, y3);
-            gl.glVertex2d(x4, y4);
-            gl.glEnd();
-        }
-
-        for (int i = 0; i < transitions; i += 1)
-        {
-            double nx1 = tween_xx[i] * x1 + tween_xy[i] * y1 + tween_tx[i];
-            double ny1 = tween_yx[i] * x1 + tween_yy[i] * y1 + tween_ty[i];
-            double nx2 = tween_xx[i] * x2 + tween_xy[i] * y2 + tween_tx[i];
-            double ny2 = tween_yx[i] * x2 + tween_yy[i] * y2 + tween_ty[i];
-            double nx3 = tween_xx[i] * x3 + tween_xy[i] * y3 + tween_tx[i];
-            double ny3 = tween_yx[i] * x3 + tween_yy[i] * y3 + tween_ty[i];
-            double nx4 = tween_xx[i] * x4 + tween_xy[i] * y4 + tween_tx[i];
-            double ny4 = tween_yx[i] * x4 + tween_yy[i] * y4 + tween_ty[i];
-
-            recursiveDraw(level - 1, nx1, ny1, nx2, ny2, nx3, ny3, nx4, ny4);
-        }
-
+        currentFractalIndex = 0;
+        currentFractal = fractals.get(currentFractalIndex);
     }
 
     @Override
@@ -351,30 +240,180 @@ public class MyFractalFantasies extends JFrame implements GLEventListener, KeyLi
 
         // Fonts draw selves at the current raster position
         gl.glRasterPos2f(right - (right + 1.5f), bottom + 1);
-        caption = "Current frame = " + currentDrawList;
+        caption = currentFractal.Name + " Current frame = " + currentDrawList;
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, caption);
 
         gl.glFlush();
 
         if (inAnimation) {
-            if (incrementFrames > 0) {
+            if (incrementFrames > 0)
+            {
                 currentDrawList += 1;
                 incrementFrames -= 1;
-                if (currentDrawList > maxFrames) {
-                    currentDrawList = base;
+
+                if (drawByLevel)
+                {
+                    if (currentDrawList > maxFrames)
+                    {
+                        currentDrawList = 1001;
+                    }
                 }
-            } else if (decrementFrames > 0) {
+                else
+                {
+                    if (currentDrawList > fractals.size() * 50)
+                    {
+                        currentDrawList = base;
+                    }
+                }
+
+            }
+            else if (decrementFrames > 0)
+            {
                 currentDrawList -= 1;
                 decrementFrames -= 1;
-                if (currentDrawList < base) {
-                    currentDrawList = maxFrames;
+
+                if (drawByLevel)
+                {
+                    if (currentDrawList <= maxFrames - fractals.size() * 50)
+                    {
+                        currentDrawList = maxFrames;
+                    }
+                }
+                else
+                {
+                    if (currentDrawList < base)
+                    {
+                        currentDrawList = fractals.size() * 50;
+                    }
                 }
             }
 
+            currentFractal = fractals.get(currentFractalIndex);
             if (incrementFrames < 1 && decrementFrames < 1) {
                 inAnimation = false;
             }
         }
+    }
+
+    private void myInit()
+    {
+        Fractal beginFractal, startFractal, endFractal;
+        beginFractal = fractals.get(0);
+        startFractal = endFractal = beginFractal;
+
+        ArrayList<Point> beginPoints, startPoints, endPoints;
+        beginPoints = paintFractal(startFractal);
+        startPoints = endPoints = beginPoints;
+        for(int i = 1; i < fractals.size(); i += 1)
+        {
+            endFractal = fractals.get(i);
+            endPoints = paintFractal(endFractal);
+            tweenPoints(currentDrawList, startPoints, endPoints);
+            drawByLevel(currentDrawList + 1001, startFractal, endFractal);
+            currentDrawList += 50;
+
+            startFractal = endFractal;
+            startPoints = endPoints;
+        }
+
+        tweenPoints(currentDrawList, endPoints, beginPoints);
+        drawByLevel(currentDrawList + 1001, endFractal, beginFractal);
+        currentDrawList = base;
+        framesReady = true;
+    }
+
+    private void tweenPoints(int startList, ArrayList<Point> startPoints, ArrayList<Point> endPoints)
+    {
+        Point startPoint, endPoint;
+        double x, y, tweenFactor;
+        for (int i = 0; i <= 50; i += 1)
+        {
+            gl.glNewList(startList + i % 700, GL2.GL_COMPILE);
+            tweenFactor = i / 50.0;
+
+            gl.glBegin(GL2.GL_POINTS);
+            for(int j = 0; j < pointsToDraw; j += 1)
+            {
+                startPoint = startPoints.get(j);
+                endPoint = endPoints.get(j);
+                x = (tweenFactor * endPoint.x) + (1.0 - tweenFactor) * startPoint.x;
+                y = (tweenFactor * endPoint.y) + (1.0 - tweenFactor) * startPoint.y;
+                gl.glVertex2d(x, y);
+            }
+
+            gl.glEnd();
+            framesDrawn =+ 1;
+            gl.glEndList();
+        }
+    }
+
+    private void drawByLevel(int startList, Fractal start, Fractal end)
+    {
+        ArrayList<Transformation> tween;
+        double tweenFactor;
+        for(int i = 0; i <= 50; i += 1)
+        {
+            tweenFactor = i / 50.0;
+            tween = this.tweenTransformations(start.Transformations, end.Transformations, tweenFactor);
+
+            int list = startList + i > maxFrames ? 1001 : startList + i;
+            gl.glNewList(list, GL2.GL_COMPILE);
+            recursiveDraw(end.RecursiveLevels, end.RecursiveLevels - 1, tween, end.OptimalPolygon.Verticies);
+            gl.glEndList();
+        }
+    }
+
+    private void recursiveDraw(int level, int maxDrawLevel, ArrayList<Transformation> transformations, ArrayList<Point> points)
+    {
+        if (level < 1)
+        {
+            return;
+        }
+
+        if (level < maxDrawLevel)
+        {
+            gl.glBegin(GL2.GL_POLYGON);
+            for(Point point : points)
+            {
+                gl.glVertex2d(point.x, point.y);
+            }
+            gl.glEnd();
+        }
+
+        for (Transformation transformation : transformations)
+        {
+            ArrayList<Point> newPoints = new ArrayList<Point>();
+            for(Point point : points)
+            {
+                double newx = transformation.transformX(point.x, point.y);
+                double newy = transformation.transformY(point.x, point.y);
+                newPoints.add(new Point(newx, newy));
+            }
+
+            recursiveDraw(level - 1, maxDrawLevel, transformations, newPoints);
+        }
+    }
+
+    private ArrayList<Transformation> tweenTransformations(ArrayList<Transformation> start, ArrayList<Transformation> end, double tweenFactor)
+    {
+        ArrayList<Transformation> transformations = new ArrayList<Transformation>();
+        Transformation tween, startTransformation, endTransformation;
+        int startSize = start.size();
+        for (int i = 0; i < end.size(); i += 1)
+        {
+            tween = new Transformation();
+            endTransformation = end.get(i);
+            startTransformation = start.get(i % startSize);
+            tween.xx = (tweenFactor * endTransformation.xx) + (1.0 - tweenFactor) * startTransformation.xx;
+            tween.xy = (tweenFactor * endTransformation.xy) + (1.0 - tweenFactor) * startTransformation.xy;
+            tween.yx = (tweenFactor * endTransformation.yx) + (1.0 - tweenFactor) * startTransformation.yx;
+            tween.yy = (tweenFactor * endTransformation.yy) + (1.0 - tweenFactor) * startTransformation.yy;
+            tween.tx = (tweenFactor * endTransformation.tx) + (1.0 - tweenFactor) * startTransformation.tx;
+            tween.ty = (tweenFactor * endTransformation.ty) + (1.0 - tweenFactor) * startTransformation.ty;
+            transformations.add(tween);
+        }
+
+        return transformations;
     }
 
     @Override
@@ -389,9 +428,6 @@ public class MyFractalFantasies extends JFrame implements GLEventListener, KeyLi
 
     }
 
-    /**
-     * Start of KeyListener methods
-     */
     @Override
     public void keyTyped(KeyEvent e)
     {
@@ -406,12 +442,9 @@ public class MyFractalFantasies extends JFrame implements GLEventListener, KeyLi
             case KeyEvent.VK_ESCAPE:
                 System.exit(0);
                 break;
-            case KeyEvent.VK_R:
-//                if (!goingToDragon && !goingToInverse)
-//                {
-//                    goingToDragon = !atDragon;
-//                    goingToInverse = !atInverse;
-//                }
+            case KeyEvent.VK_T:
+                drawByLevel = !drawByLevel;
+                currentDrawList = (currentDrawList + 1000) % 2000;
                 break;
             case KeyEvent.VK_KP_RIGHT:
             case KeyEvent.VK_RIGHT:
@@ -419,6 +452,7 @@ public class MyFractalFantasies extends JFrame implements GLEventListener, KeyLi
                 {
                     incrementFrames = 50;
                     inAnimation = true;
+                    currentFractalIndex = currentFractalIndex + 1 >= fractals.size() ? 0 : currentFractalIndex + 1;
                 }
                 break;
             case KeyEvent.VK_KP_LEFT:
@@ -427,6 +461,7 @@ public class MyFractalFantasies extends JFrame implements GLEventListener, KeyLi
                 {
                     decrementFrames = 50;
                     inAnimation = true;
+                    currentFractalIndex = currentFractalIndex - 1 < 0 ? fractals.size() - 1 : currentFractalIndex - 1;
                 }
                 break;
             default:
@@ -440,90 +475,117 @@ public class MyFractalFantasies extends JFrame implements GLEventListener, KeyLi
 
     }
 
-    /* The following routine loads Iterated Function System codes.  Note
- * that loadifs() only reads the very first set of IFS codes in the
- * file and ignores the name label in the file entirely.
- */
-    void loadifs()
+    private ArrayList<Point> paintFractal(Fractal fractal)
     {
-        BufferedReader in = null;
-        try {
-            in = new BufferedReader(new InputStreamReader(Thread.currentThread().getContextClassLoader().getResourceAsStream(ifsfile)));
-        } catch (Exception e) { System.out.println(e.toString()); };
-
-        transitions = 0;
-
-        String line = null;
-
-        // throw away first line
-        try {
-            line = in.readLine();
-        } catch (IOException e) { System.out.println(e.toString()); }
-
-        try {
-            while ((line = in.readLine()) != null) {
-                String[] tokens = line.trim().split("\\s+"); // Tokens separated by "whitespace"
-                if (tokens[0].equals("}")) return;
-                try {
-                    rotate_scale_xx[transitions] = Double.parseDouble(tokens[0]);
-                    rotate_scale_xy[transitions] = Double.parseDouble(tokens[1]);
-                    rotate_scale_yx[transitions] = Double.parseDouble(tokens[2]);
-                    rotate_scale_yy[transitions] = Double.parseDouble(tokens[3]);
-                    trans_x[transitions] = Double.parseDouble(tokens[4]);
-                    trans_y[transitions] = Double.parseDouble(tokens[5]);
-                    prob[transitions] = Double.parseDouble(tokens[6]);
-                } catch (NumberFormatException ex) {
-                    System.out.println("Not a double ");
-                    System.out.println(ex);
-                }
-                transitions++;
-            }
-        }
-        catch (IOException e) { System.out.println(e.toString());}
-    }
-
-    // The spray paint algorithm for the IFS representation of the
-    // fractal is encapsulated here
-    void paintifs(ArrayList<Double> xCoordinates, ArrayList<Double> yCoordinates) {
-
-        int iter, t;
+        int iteration, t;
         double oldx, oldy, newx, newy, p;
-        double cumulative_prob [] = new double [transitions];
-        cumulative_prob[0] = prob[0];
-        for (int i = 1; i < transitions; i++)
+        ArrayList<Point> points = new ArrayList<Point>();
+        double cumulative_prob [] = new double [fractal.Transformations.size()];
+        cumulative_prob[0] = fractal.Transformations.get(0).prob;
+        for (int i = 1; i < fractal.Transformations.size(); i++)
         {
-            cumulative_prob[i] = cumulative_prob[i-1] + prob[i]; // Make probability cumulative
+            cumulative_prob[i] = cumulative_prob[i-1] + fractal.Transformations.get(i).prob; // Make probability cumulative
         }
 
 
-        iter = 0;
+        iteration = 0;
         oldx = xOrigin;
         oldy = yOrigin;
-        while (iter <= pointsToDraw + 50)
+        Transformation transformation;
+        while (iteration <= pointsToDraw + 50)
         {
             p = Math.random();
 
             // Select transformation t
             t = 0;
-            while ((p > cumulative_prob[t]) && (t < transitions - 1))
+            while ((p > cumulative_prob[t]) && (t < fractal.Transformations.size() - 1))
             {
                 ++t;
             }
 
             // Transform point by transformation t
-            newx = rotate_scale_xx[t]*oldx + rotate_scale_xy[t]*oldy + trans_x[t];
-            newy = rotate_scale_yx[t]*oldx + rotate_scale_yy[t]*oldy + trans_y[t];
+            transformation = fractal.Transformations.get(t);
+            newx = transformation.xx * oldx + transformation.xy * oldy + transformation.tx;
+            newy = transformation.yx * oldx + transformation.yy * oldy + transformation.ty;
 
             // Jump around for awhile without plotting to make
             //   sure the first point seen is attracted into the
             //   fractal
-            if (iter > 50) {
-                xCoordinates.add(newx);
-                yCoordinates.add(newy);
+            if (iteration > 50)
+            {
+                points.add(new Point(newx, newy));
             }
+
             oldx = newx;
             oldy = newy;
-            iter++;
+            iteration++;
         }
+
+        return points;
+    }
+
+    Fractal loadFractal(Fractal fractal)
+    {
+        BufferedReader in = null;
+        try
+        {
+            in = new BufferedReader(new InputStreamReader(Thread.currentThread().getContextClassLoader().getResourceAsStream(baseDir + fractal.Name)));
+        }
+        catch (Exception e)
+        {
+            System.out.println(e.toString());
+        }
+
+        transitions = 0;
+        String line = null;
+
+        try
+        {
+            line = in.readLine();
+        }
+        catch (IOException e)
+        {
+            System.out.println(e.toString());
+        }
+
+        Transformation transformation;
+        try
+        {
+            while ((line = in.readLine()) != null)
+            {
+                String[] tokens = line.trim().split("\\s+"); // Tokens separated by "whitespace"
+                if (tokens[0].equals("}"))
+                {
+                    break;
+                }
+
+                transformation = new Transformation();
+
+                try
+                {
+                    transformation.xx = Double.parseDouble(tokens[0]);
+                    transformation.xy = Double.parseDouble(tokens[1]);
+                    transformation.yx = Double.parseDouble(tokens[2]);
+                    transformation.yy = Double.parseDouble(tokens[3]);
+                    transformation.tx = Double.parseDouble(tokens[4]);
+                    transformation.ty = Double.parseDouble(tokens[5]);
+                    transformation.prob = Double.parseDouble(tokens[6]);
+                }
+                catch (NumberFormatException ex)
+                {
+                    System.out.println("Not a double ");
+                    System.out.println(ex.toString());
+                }
+
+                transitions++;
+                fractal.Transformations.add(transformation);
+            }
+        }
+        catch (IOException e)
+        {
+            System.out.println(e.toString());
+        }
+
+        return fractal;
     }
 }
