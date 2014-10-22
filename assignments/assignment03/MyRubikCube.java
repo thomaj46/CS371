@@ -10,6 +10,7 @@ import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
+import java.util.Random;
 
 /**
  * Created by John on 10/18/2014.
@@ -25,6 +26,9 @@ public class MyRubikCube extends JFrame
     double eyeX = -10;
     double eyeY = 6;
     double eyeZ = 10;
+    float thetaX = 0;
+    float thetaY = 0;
+    float thetaZ = 0;
     Cube[] cubes;
 
 
@@ -105,7 +109,9 @@ public class MyRubikCube extends JFrame
             gl.glLoadIdentity();
             glu.gluLookAt(eyeX, eyeY, eyeZ, 0, 0, 0, 0, 1, 0);
 
-
+            gl.glRotatef(thetaX, 1, 0, 0);
+            gl.glRotatef(thetaY, 0, 1, 0);
+            gl.glRotatef(thetaZ, 0, 0, 1);
             this.drawCubes(gl);
 
 
@@ -236,12 +242,12 @@ public class MyRubikCube extends JFrame
         private void drawCube (GL2 gl, int cubeId, int[] colors)
         {
             gl.glMultMatrixf(cubes[cubeId].matrix, 0);
-            this.drawPolygon(gl, colors[0], 2, 3, 7, 6); // Right Face  0   0154
-            this.drawPolygon(gl, colors[1], 0, 1, 5, 4); // Left Face   1   0321
-            this.drawPolygon(gl, colors[2], 1, 2, 6, 5); // Top Face    2   1265
-            this.drawPolygon(gl, colors[3], 0, 4, 7, 3); // Bottom Face 3   0473
-            this.drawPolygon(gl, colors[4], 0, 3, 2, 1); // Front Face  4   2376
-            this.drawPolygon(gl, colors[5], 4, 5, 6, 7); // Back Face   5   4567
+            this.drawPolygon(gl, colors[0], 2, 3, 7, 6); // Right Face  0
+            this.drawPolygon(gl, colors[1], 0, 1, 5, 4); // Left Face   1
+            this.drawPolygon(gl, colors[2], 1, 2, 6, 5); // Top Face    2
+            this.drawPolygon(gl, colors[3], 0, 4, 7, 3); // Bottom Face 3
+            this.drawPolygon(gl, colors[4], 0, 3, 2, 1); // Front Face  4
+            this.drawPolygon(gl, colors[5], 4, 5, 6, 7); // Back Face   5
         }
 
         private void drawPolygon (GL2 gl, int color, int vertex1, int vertex2, int vertex3, int vertex4)
@@ -282,7 +288,15 @@ public class MyRubikCube extends JFrame
             double y = eyeY;
             double z = eyeZ;
 
-            if (key.getKeyChar() == 'a')
+            if (key.getKeyChar() == 's')
+            {
+                Random random = new Random();
+                for (int i = 0; i < random.nextInt(20) + 10; i +=1)
+                {
+                    this.performAction(Rubik3x3.getRandomAction());
+                }
+            }
+            else if (key.getKeyChar() == 'a')
             {
                 this.performAction(Rubik3x3.getRandomAction());
             }
@@ -315,6 +329,21 @@ public class MyRubikCube extends JFrame
                 case KeyEvent.VK_DOWN:
                     eyeY = (y * Math.cos(rotation)) - (z * Math.sin(rotation));
                     eyeZ = (y * Math.sin(rotation)) + (z * Math.cos(rotation));
+                    break;
+                case KeyEvent.VK_X:
+                    thetaX = (thetaX + 5) % 360;
+                    break;
+                case KeyEvent.VK_Y:
+                    thetaY = (thetaY + 5) % 360;
+                    break;
+                case KeyEvent.VK_Z:
+                    thetaZ = (thetaZ + 5) % 360;
+                    break;
+                case KeyEvent.VK_0:
+                case KeyEvent.VK_NUMPAD0:
+                    thetaX = 0;
+                    thetaY = 0;
+                    thetaZ = 0;
                     break;
             }
         }
