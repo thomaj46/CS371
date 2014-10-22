@@ -29,6 +29,8 @@ public class MyRubikCube extends JFrame
     float thetaX = 0;
     float thetaY = 0;
     float thetaZ = 0;
+    boolean idle = true;
+    int[] cubesToRotate;
     Cube[] cubes;
 
 
@@ -114,6 +116,16 @@ public class MyRubikCube extends JFrame
             gl.glRotatef(thetaZ, 0, 0, 1);
             this.drawCubes(gl);
 
+            if (!idle)
+            {
+                int rotationsRemaining = 0;
+                for(int cubePosition : cubesToRotate)
+                {
+                    rotationsRemaining += cubes[Rubik3x3.cubie_at_position[cubePosition]].rotate();
+                }
+
+                idle = rotationsRemaining == 0;
+            }
 
             gl.glFlush();
         }
@@ -288,21 +300,24 @@ public class MyRubikCube extends JFrame
             double y = eyeY;
             double z = eyeZ;
 
-            if (key.getKeyChar() == 's')
+            if (idle)
             {
-                Random random = new Random();
-                for (int i = 0; i < random.nextInt(20) + 10; i +=1)
+                if (key.getKeyChar() == 's')
                 {
-                    this.performAction(Rubik3x3.getRandomAction());
+                    Random random = new Random();
+                    for (int i = 0; i < random.nextInt(20) + 10; i +=1)
+                    {
+                        this.performActionImmediate(Rubik3x3.getRandomAction());
+                    }
                 }
-            }
-            else if (key.getKeyChar() == 'a')
-            {
-                this.performAction(Rubik3x3.getRandomAction());
-            }
-            else
-            {
-                this.performAction(key.getKeyChar());
+                else if (key.getKeyChar() == 'a')
+                {
+                    this.performActionAnimated(Rubik3x3.getRandomAction());
+                }
+                else
+                {
+                    this.performActionAnimated(key.getKeyChar());
+                }
             }
 
             switch (key.getKeyCode())
@@ -348,83 +363,81 @@ public class MyRubikCube extends JFrame
             }
         }
 
-        private void performAction(char key)
+        private void performActionAnimated(char key)
         {
+            Rotation rotation = this.performAction(key);
+            for (int cubePosition : cubesToRotate)
+            {
+                cubes[Rubik3x3.cubie_at_position[cubePosition]].startRotation(rotation);
+                idle = false;
+            }
+        }
+
+        private void performActionImmediate(char key)
+        {
+            Rotation rotation = performAction(key);
+            for (int cubePosition : cubesToRotate)
+            {
+                cubes[Rubik3x3.cubie_at_position[cubePosition]].rotateCube(rotation, 90);
+            }
+        }
+
+        private Rotation performAction(char key)
+        {
+            Rotation rotation = Rotation.None;
             switch (key)
             {
                 case 'F':
-                    for (int cubePosition : Rubik3x3.performAction('F'))
-                    {
-                        cubes[Rubik3x3.cubie_at_position[cubePosition]].RotateClockwiseZ();
-                    }
+                    cubesToRotate = Rubik3x3.performAction(key);
+                    rotation = Rotation.ClockwiseZ;
                     break;
                 case 'f':
-                    for (int cubePosition : Rubik3x3.performAction('f'))
-                    {
-                        cubes[Rubik3x3.cubie_at_position[cubePosition]].RotateCounterClockwiseZ();
-                    }
+                    cubesToRotate = Rubik3x3.performAction(key);
+                    rotation = Rotation.CounterClockwiseZ;
                     break;
                 case 'B':
-                    for (int cubePosition : Rubik3x3.performAction('B'))
-                    {
-                        cubes[Rubik3x3.cubie_at_position[cubePosition]].RotateCounterClockwiseZ();
-                    }
+                    cubesToRotate = Rubik3x3.performAction(key);
+                    rotation = Rotation.CounterClockwiseZ;
                     break;
                 case 'b':
-                    for (int cubePosition : Rubik3x3.performAction('b'))
-                    {
-                        cubes[Rubik3x3.cubie_at_position[cubePosition]].RotateClockwiseZ();
-                    }
+                    cubesToRotate = Rubik3x3.performAction(key);
+                    rotation = Rotation.ClockwiseZ;
                     break;
                 case 'L':
-                    for (int cubePosition : Rubik3x3.performAction('L'))
-                    {
-                        cubes[Rubik3x3.cubie_at_position[cubePosition]].RotateCounterClockwiseX();
-                    }
+                    cubesToRotate = Rubik3x3.performAction(key);
+                    rotation = Rotation.CounterClockwiseX;
                     break;
                 case 'l':
-                    for (int cubePosition : Rubik3x3.performAction('l'))
-                    {
-                        cubes[Rubik3x3.cubie_at_position[cubePosition]].RotateClockwiseX();
-                    }
+                    cubesToRotate = Rubik3x3.performAction(key);
+                    rotation = Rotation.ClockwiseX;
                     break;
                 case 'R':
-                    for (int cubePosition : Rubik3x3.performAction('R'))
-                    {
-                        cubes[Rubik3x3.cubie_at_position[cubePosition]].RotateClockwiseX();
-                    }
+                    cubesToRotate = Rubik3x3.performAction(key);
+                    rotation = Rotation.ClockwiseX;
                     break;
                 case 'r':
-                    for (int cubePosition : Rubik3x3.performAction('r'))
-                    {
-                        cubes[Rubik3x3.cubie_at_position[cubePosition]].RotateCounterClockwiseX();
-                    }
+                    cubesToRotate = Rubik3x3.performAction(key);
+                    rotation = Rotation.CounterClockwiseX;
                     break;
                 case 'U':
-                    for (int cubePosition : Rubik3x3.performAction('U'))
-                    {
-                        cubes[Rubik3x3.cubie_at_position[cubePosition]].RotateClockwiseY();
-                    }
+                    cubesToRotate = Rubik3x3.performAction(key);
+                    rotation = Rotation.ClockwiseY;
                     break;
                 case 'u':
-                    for (int cubePosition : Rubik3x3.performAction('u'))
-                    {
-                        cubes[Rubik3x3.cubie_at_position[cubePosition]].RotateCounterClockwiseY();
-                    }
+                    cubesToRotate = Rubik3x3.performAction(key);
+                    rotation = Rotation.CounterClockwiseY;
                     break;
                 case 'D':
-                    for (int cubePosition : Rubik3x3.performAction('D'))
-                    {
-                        cubes[Rubik3x3.cubie_at_position[cubePosition]].RotateCounterClockwiseY();
-                    }
+                    cubesToRotate = Rubik3x3.performAction(key);
+                    rotation = Rotation.CounterClockwiseY;
                     break;
                 case 'd':
-                    for (int cubePosition : Rubik3x3.performAction('d'))
-                    {
-                        cubes[Rubik3x3.cubie_at_position[cubePosition]].RotateClockwiseY();
-                    }
+                    cubesToRotate = Rubik3x3.performAction(key);
+                    rotation = Rotation.ClockwiseY;
                     break;
             }
+
+            return rotation;
         }
 
         @Override
@@ -456,15 +469,23 @@ public class MyRubikCube extends JFrame
         }
     }
 
+    private enum Rotation
+    {
+        None,
+        ClockwiseX,
+        ClockwiseY,
+        ClockwiseZ,
+        CounterClockwiseX,
+        CounterClockwiseY,
+        CounterClockwiseZ,
+    }
+
     private class Cube
     {
         public float[] matrix;
-        private double deg90 = Math.toRadians(90);
-        private double degMinus90 = Math.toRadians(-90);
-        private float cos90 = (float)Math.cos(deg90);
-        private float sin90 = (float)Math.sin(deg90);
-        private float cosMinus90 = (float)Math.cos(degMinus90);
-        private float sinMinus90 = (float)Math.sin(degMinus90);
+        private int rotationIncrement = 9;
+        private int amountToRotate;
+        private Rotation rotation;
 
         private final float[] identity = new float[]
                 {
@@ -479,7 +500,50 @@ public class MyRubikCube extends JFrame
             this.matrix = this.identity.clone();
         }
 
-        public float[] multiplyMatrix (float[] matrixB)
+        public void startRotation(Rotation rotation)
+        {
+            this.amountToRotate = 90;
+            this.rotation = rotation;
+        }
+
+        public int rotate()
+        {
+            if (this.amountToRotate < 1)
+            {
+                return 0;
+            }
+
+            this.rotateCube(rotation, rotationIncrement);
+            this.amountToRotate -= rotationIncrement;
+            return this.amountToRotate;
+        }
+
+        public void rotateCube(Rotation rotation, int theta)
+        {
+            switch (rotation)
+            {
+                case ClockwiseX:
+                    this.rotateClockwiseX(theta);
+                    break;
+                case CounterClockwiseX:
+                    this.rotateCounterClockwiseX(theta);
+                    break;
+                case ClockwiseY:
+                    this.rotateClockwiseY(theta);
+                    break;
+                case CounterClockwiseY:
+                    this.rotateCounterClockwiseY(theta);
+                    break;
+                case ClockwiseZ:
+                    this.rotateClockwiseZ(theta);
+                    break;
+                case CounterClockwiseZ:
+                    this.rotateCounterClockwiseZ(theta);
+                    break;
+            }
+        }
+
+        private float[] multiplyMatrix (float[] matrixB)
         {
             int a = 0;
             int b = 0;
@@ -492,80 +556,98 @@ public class MyRubikCube extends JFrame
             return result;
         }
 
-        public void RotateClockwiseX()
+        public void rotateClockwiseX (int theta)
         {
+            double thetaRadians = Math.toRadians(theta);
+            float cosTheta = (float)Math.cos(thetaRadians);
+            float sinTheta = (float)Math.sin(thetaRadians);
             float[] rotationMatrix = new float[]
                     {
-                            1,      0,         0, 0,
-                            0,  cos90, -sin90, 0,
-                            0,  sin90,  cos90, 0,
-                            0,      0,         0, 1
+                            1,        0,         0, 0,
+                            0, cosTheta, -sinTheta, 0,
+                            0, sinTheta,  cosTheta, 0,
+                            0,        0,         0, 1
                     };
 
             this.matrix = this.multiplyMatrix(rotationMatrix);
         }
 
-        public void RotateCounterClockwiseX()
+        public void rotateCounterClockwiseX (int theta)
         {
+            double thetaRadians = Math.toRadians(-theta);
+            float cosTheta = (float)Math.cos(thetaRadians);
+            float sinTheta = (float)Math.sin(thetaRadians);
             float[] rotationMatrix = new float[]
                     {
-                            1,           0,           0, 0,
-                            0,  cosMinus90, -sinMinus90, 0,
-                            0,  sinMinus90,  cosMinus90, 0,
-                            0,           0,           0, 1
+                            1,           0,         0, 0,
+                            0,    cosTheta, -sinTheta, 0,
+                            0,    sinTheta,  cosTheta, 0,
+                            0,           0,         0, 1
                     };
 
             this.matrix = this.multiplyMatrix(rotationMatrix);
         }
 
-        public void RotateClockwiseY()
+        public void rotateClockwiseY (int theta)
         {
+            double thetaRadians = Math.toRadians(theta);
+            float cosTheta = (float)Math.cos(thetaRadians);
+            float sinTheta = (float)Math.sin(thetaRadians);
             float[] rotationMatrix = new float[]
                     {
-                             cos90, 0,  sin90, 0,
-                                 0, 1,      0, 0,
-                            -sin90, 0,  cos90, 0,
-                                 0, 0,      0, 1
+                             cosTheta, 0, sinTheta, 0,
+                                    0, 1,        0, 0,
+                            -sinTheta, 0, cosTheta, 0,
+                                    0, 0,        0, 1
                     };
 
             this.matrix = this.multiplyMatrix(rotationMatrix);
         }
 
-        public void RotateCounterClockwiseY()
+        public void rotateCounterClockwiseY (int theta)
         {
+            double thetaRadians = Math.toRadians(-theta);
+            float cosTheta = (float)Math.cos(thetaRadians);
+            float sinTheta = (float)Math.sin(thetaRadians);
             float[] rotationMatrix = new float[]
                     {
-                             cosMinus90, 0, sinMinus90, 0,
-                                      0, 1,          0, 0,
-                            -sinMinus90, 0, cosMinus90, 0,
-                                      0, 0,          0, 1
+                             cosTheta, 0, sinTheta, 0,
+                                    0, 1,        0, 0,
+                            -sinTheta, 0, cosTheta, 0,
+                                    0, 0,        0, 1
                     };
 
             this.matrix = this.multiplyMatrix(rotationMatrix);
 
         }
 
-        public void RotateClockwiseZ()
+        public void rotateClockwiseZ (int theta)
         {
+            double thetaRadians = Math.toRadians(theta);
+            float cosTheta = (float)Math.cos(thetaRadians);
+            float sinTheta = (float)Math.sin(thetaRadians);
             float[] rotationMatrix = new float[]
                     {
-                            cos90, -sin90, 0, 0,
-                            sin90,  cos90, 0, 0,
-                                0,      0, 1, 0,
-                                0,      0, 0, 1
+                            cosTheta, -sinTheta, 0, 0,
+                            sinTheta,  cosTheta, 0, 0,
+                                   0,         0, 1, 0,
+                                   0,         0, 0, 1
                     };
 
             this.matrix = this.multiplyMatrix(rotationMatrix);
         }
 
-        public void RotateCounterClockwiseZ()
+        public void rotateCounterClockwiseZ (int theta)
         {
+            double thetaRadians = Math.toRadians(-theta);
+            float cosTheta = (float)Math.cos(thetaRadians);
+            float sinTheta = (float)Math.sin(thetaRadians);
             float[] rotationMatrix = new float[]
                     {
-                            cosMinus90, -sinMinus90, 0, 0,
-                            sinMinus90,  cosMinus90, 0, 0,
-                                     0,           0, 1, 0,
-                                     0,           0, 0, 1
+                            cosTheta, -sinTheta, 0, 0,
+                            sinTheta,  cosTheta, 0, 0,
+                                   0,         0, 1, 0,
+                                   0,         0, 0, 1
                     };
 
             this.matrix = this.multiplyMatrix(rotationMatrix);
