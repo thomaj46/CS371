@@ -23,11 +23,11 @@ public class MyRubikCube extends JFrame
     FPSAnimator animator;
     int nearPerspective = 1;
     int farPerspective = 55;
-    double eyeX = -10;
-    double eyeY = 6;
-    double eyeZ = 10;
-    float thetaX = 0;
-    float thetaY = 0;
+    double eyeX = 0;
+    double eyeY = 0;
+    double eyeZ = 15;
+    float thetaX = 45;
+    float thetaY = 45;
     float thetaZ = 0;
     boolean idle = true;
     int[] cubesToRotate;
@@ -50,6 +50,7 @@ public class MyRubikCube extends JFrame
         canvas.addMouseWheelListener(new RubikMouseWheelListener());
         animator = new FPSAnimator(canvas, 15);
         this.getContentPane().add(canvas);
+        this.cubesToRotate = new int[9];
     }
 
     public void run ()
@@ -356,8 +357,8 @@ public class MyRubikCube extends JFrame
                     break;
                 case KeyEvent.VK_0:
                 case KeyEvent.VK_NUMPAD0:
-                    thetaX = 0;
-                    thetaY = 0;
+                    thetaX = 45;
+                    thetaY = 45;
                     thetaZ = 0;
                     break;
             }
@@ -458,9 +459,9 @@ public class MyRubikCube extends JFrame
             {
                 eyeZ = 50;
             }
-            else if (newZ < 0)
+            else if (newZ < 15)
             {
-                eyeZ = 0;
+                eyeZ = 15;
             }
             else
             {
