@@ -14,6 +14,28 @@ import java.util.Random;
 
 /**
  * Created by John on 10/18/2014.
+ *
+ * Features:
+ * Instead of the entire face doing a rotation each individual cube rotates.  The corresponding colors
+ * will line up correctly during the animation.
+ *
+ * You can use the 'PageUp' and 'PageDown' keys to either speed up or slow down the animation of the rotation.
+ *
+ * Along with the x, y, z cube rotation there is also rotation of the viewer.  The can rotate the viewer
+ * around the XZ plane using the left and right arrow keys.  You can also rotate the viewer around the
+ * YZ plane, however, this rotation may throw you off as it is dependant on where you are in the XZ plane.
+ *
+ * If the cube is too big or you feel like having a little bit of fun you can use the mouse wheel
+ * to zoom in and out.
+ *
+ * Press the '0' key at any time to reset the view back to the default.
+ *
+ * Following the instructions the 's' key will randomly shuffle the cube instantly.  The 'a' key will
+ * randomly rotate a face either clockwise or counterclockwise.  All of the required keys will rotate
+ * their face accordingly.
+ *
+ *
+ *
  */
 public class MyRubikCube extends JFrame
 {
@@ -23,6 +45,7 @@ public class MyRubikCube extends JFrame
     FPSAnimator animator;
     int nearPerspective = 1;
     int farPerspective = 55;
+    int animationSpeed = 5;
     double eyeX = 0;
     double eyeY = 0;
     double eyeZ = 15;
@@ -30,7 +53,9 @@ public class MyRubikCube extends JFrame
     float thetaY = 45;
     float thetaZ = 0;
     boolean idle = true;
+    boolean magicMode = false;
     int[] cubesToRotate;
+    int[] animationSpeeds = { 1, 2, 3, 5, 6, 9, 10 ,15, 18, 30, 45, 90 };
     Cube[] cubes;
 
 
@@ -125,7 +150,7 @@ public class MyRubikCube extends JFrame
                     rotationsRemaining += cubes[Rubik3x3.cubie_at_position[cubePosition]].rotate();
                 }
 
-                idle = rotationsRemaining == 0;
+                idle = rotationsRemaining <= 1;
             }
 
             gl.glFlush();
@@ -265,13 +290,16 @@ public class MyRubikCube extends JFrame
 
         private void drawPolygon (GL2 gl, int color, int vertex1, int vertex2, int vertex3, int vertex4)
         {
-            gl.glColor3fv(colors[color], 0);
-            gl.glBegin(GL2.GL_POLYGON);
-            gl.glVertex3fv(vertices[vertex1], 0);
-            gl.glVertex3fv(vertices[vertex2], 0);
-            gl.glVertex3fv(vertices[vertex3], 0);
-            gl.glVertex3fv(vertices[vertex4], 0);
-            gl.glEnd();
+            if (color > 0)
+            {
+                gl.glColor3fv(colors[color], 0);
+                gl.glBegin(GL2.GL_POLYGON);
+                gl.glVertex3fv(vertices[vertex1], 0);
+                gl.glVertex3fv(vertices[vertex2], 0);
+                gl.glVertex3fv(vertices[vertex3], 0);
+                gl.glVertex3fv(vertices[vertex4], 0);
+                gl.glEnd();
+            }
         }
 
         @Override
@@ -301,7 +329,7 @@ public class MyRubikCube extends JFrame
             double y = eyeY;
             double z = eyeZ;
 
-            if (idle)
+            if (idle && (key.getKeyChar() != KeyEvent.CHAR_UNDEFINED))
             {
                 if (key.getKeyChar() == 's')
                 {
@@ -314,6 +342,19 @@ public class MyRubikCube extends JFrame
                 else if (key.getKeyChar() == 'a')
                 {
                     this.performActionAnimated(Rubik3x3.getRandomAction());
+                }
+                else if (key.getKeyChar() == 'm')
+                {
+                    if (magicMode)
+                    {
+                        // Disable
+                    }
+                    else
+                    {
+                        // Enable
+
+
+                    }
                 }
                 else
                 {
@@ -355,11 +396,26 @@ public class MyRubikCube extends JFrame
                 case KeyEvent.VK_Z:
                     thetaZ = (thetaZ + 5) % 360;
                     break;
+                case KeyEvent.VK_PAGE_UP:
+                    if (idle)
+                    {
+                        animationSpeed = animationSpeed == 11 ? 11 : animationSpeed + 1;
+                    }
+                    break;
+                case KeyEvent.VK_PAGE_DOWN:
+                    if (idle)
+                    {
+                        animationSpeed = animationSpeed == 0 ? 0 : animationSpeed  - 1;
+                    }
+                    break;
                 case KeyEvent.VK_0:
                 case KeyEvent.VK_NUMPAD0:
                     thetaX = 45;
                     thetaY = 45;
                     thetaZ = 0;
+                    eyeX = 0;
+                    eyeY = 0;
+                    eyeZ = 15;
                     break;
             }
         }
@@ -484,7 +540,6 @@ public class MyRubikCube extends JFrame
     private class Cube
     {
         public float[] matrix;
-        private int rotationIncrement = 9;
         private int amountToRotate;
         private Rotation rotation;
 
@@ -514,8 +569,8 @@ public class MyRubikCube extends JFrame
                 return 0;
             }
 
-            this.rotateCube(rotation, rotationIncrement);
-            this.amountToRotate -= rotationIncrement;
+            this.rotateCube(rotation, animationSpeeds[animationSpeed]);
+            this.amountToRotate -= animationSpeeds[animationSpeed];
             return this.amountToRotate;
         }
 
@@ -555,6 +610,19 @@ public class MyRubikCube extends JFrame
                 result[i] = (this.matrix[a] * matrixB[b]) + (this.matrix[a+1] * matrixB[b+4]) + (this.matrix[a+2] * matrixB[b+8]) + (this.matrix[a+3] * matrixB[b+12]);
             }
             return result;
+        }
+
+        public void expand(int tx, int ty, int tz)
+        {
+            float[] translationMatrix = new float[]
+                    {
+                            1, 0, 0, tx,
+                            0, 1, 0, ty,
+                            0, 0, 1, tz,
+                            0, 0, 0,  1
+                    };
+
+            this.matrix = this.multiplyMatrix(translationMatrix);
         }
 
         public void rotateClockwiseX (int theta)
