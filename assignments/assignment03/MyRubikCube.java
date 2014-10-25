@@ -30,6 +30,8 @@ import java.util.Random;
  *
  * Press the '0' key at any time to reset the view back to the default.
  *
+ * Press the 'm' key to expand the cube to view all sides at once.
+ *
  * Following the instructions the 's' key will randomly shuffle the cube instantly.  The 'a' key will
  * randomly rotate a face either clockwise or counterclockwise.  All of the required keys will rotate
  * their face accordingly.
@@ -44,8 +46,9 @@ public class MyRubikCube extends JFrame
     GLJPanel canvas;
     FPSAnimator animator;
     int nearPerspective = 1;
-    int farPerspective = 55;
+    int farPerspective = 75;
     int animationSpeed = 5;
+    float cubeSpacing = 2.1f;
     double eyeX = 0;
     double eyeY = 0;
     double eyeZ = 15;
@@ -89,7 +92,6 @@ public class MyRubikCube extends JFrame
 
     private class RubikEventListener implements GLEventListener
     {
-        float cubeSpacing = 2.1f;
         float vertices[][] =
                 {
                         {-1, -1, 1}, // lower front left
@@ -348,12 +350,16 @@ public class MyRubikCube extends JFrame
                     if (magicMode)
                     {
                         // Disable
+                        cubeSpacing = 4.5f;
+                        eyeZ = 25;
+                        magicMode = false;
                     }
                     else
                     {
                         // Enable
-
-
+                        cubeSpacing = 2.1f;
+                        eyeZ = 15;
+                        magicMode = true;
                     }
                 }
                 else
